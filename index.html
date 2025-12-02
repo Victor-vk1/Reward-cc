@@ -16,7 +16,6 @@ body {
     height: 100vh;
     color: #fff;
 }
-
 #panel {
     background: rgba(20,20,35,0.95);
     border-radius: 25px;
@@ -26,14 +25,12 @@ body {
     text-align: center;
     position: relative;
 }
-
 #header {
     font-family: 'Cinzel', serif;
     font-size: 2.5em;
     text-shadow: 0 0 15px #a29bfe;
     margin-bottom: 30px;
 }
-
 #user-info {
     position: relative;
     margin-bottom: 15px;
@@ -43,11 +40,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 0 10px #8b7ff0;
 }
-
-#login {
-    margin-bottom: 20px;
-}
-
+#login { margin-bottom: 20px; }
 input {
     padding: 10px;
     border-radius: 10px;
@@ -56,7 +49,6 @@ input {
     width: 220px;
     margin-bottom: 10px;
 }
-
 button {
     padding: 10px 20px;
     border: none;
@@ -71,18 +63,15 @@ button {
     transition: 0.3s;
     margin: 5px;
 }
-
 button:hover:enabled {
     box-shadow: 0 0 35px rgba(108,92,231,0.9);
     transform: scale(1.05);
 }
-
 button:disabled {
     background: rgba(100,100,100,0.3);
     box-shadow: none;
     cursor: not-allowed;
 }
-
 #timer {
     margin-top: 20px;
     font-size: 1.2em;
@@ -93,7 +82,6 @@ button:disabled {
     border-radius: 12px;
     display: inline-block;
 }
-
 #rewards {
     margin-top: 20px;
     background: rgba(0,0,0,0.4);
@@ -108,20 +96,17 @@ button:disabled {
     gap: 15px;
     flex-wrap: wrap;
 }
-
 .reward-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     animation: float 1.5s ease-in-out infinite alternate;
 }
-
 .reward-item img {
     width: 45px;
     height: 45px;
     margin-bottom: 5px;
 }
-
 @keyframes float {
     0% { transform: translateY(0); }
     100% { transform: translateY(-8px); }
@@ -148,7 +133,7 @@ button:disabled {
 </div>
 
 <script>
-const CLAIM_INTERVAL = 92 * 60 * 60 * 1000; // 92 hours
+const CLAIM_INTERVAL = 92*60*60*1000;
 const possibleRewards = [
     { type:'coins', amount:10, icon:'https://i.imgur.com/4BzZ5L3.png' },
     { type:'coins', amount:15, icon:'https://i.imgur.com/4BzZ5L3.png' },
@@ -157,12 +142,12 @@ const possibleRewards = [
     { type:'soulShards', amount:5, icon:'https://i.imgur.com/1L6pJKu.png' }
 ];
 
+// ---------- LOGIN ----------
 function login(){
     const usernameInput = document.getElementById('username').value.trim();
     if(!usernameInput) return alert('Enter username!');
     localStorage.setItem('username', usernameInput);
 
-    // initialize stats if they don't exist
     if(!localStorage.getItem('coins')) localStorage.setItem('coins',0);
     if(!localStorage.getItem('exp')) localStorage.setItem('exp',0);
     if(!localStorage.getItem('diamonds')) localStorage.setItem('diamonds',0);
@@ -172,14 +157,15 @@ function login(){
     document.getElementById('login').style.display='none';
     document.getElementById('reward').style.display='block';
     updateUI();
+    sendToGoogleSheet(); // sync username/stats on login
 }
 
-// show login input again for changing username
 function showLogin(){
     document.getElementById('login').style.display='block';
     document.getElementById('username').value = '';
 }
 
+// ---------- UPDATE UI ----------
 function updateUI(){
     const username = localStorage.getItem('username') || "No name";
     const coins = parseInt(localStorage.getItem('coins'));
@@ -207,7 +193,7 @@ function updateUI(){
     }
 }
 
-// claim a reward
+// ---------- CLAIM REWARD ----------
 function claimReward(){
     const reward = possibleRewards[Math.floor(Math.random()*possibleRewards.length)];
 
@@ -218,14 +204,35 @@ function claimReward(){
     rewardsDiv.innerHTML = `<div class="reward-item"><img src="${reward.icon}"><span>${reward.amount} ${reward.type}</span></div>`;
 
     updateUI();
+    sendToGoogleSheet(); // sync every claim
 }
 
-// update timer every second
-setInterval(()=>{
-    if(localStorage.getItem('username')) updateUI();
-},1000);
+// ---------- GOOGLE SHEETS SYNC ----------
+function sendToGoogleSheet(){
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbzqba9dIQ2DZ0q0LTpLpaci4AsPOsRZ9YirlWHo84AVChR5fOxR0T7dbkCnJmfD_01v/exec";
 
-// if username already exists, show reward panel immediately
+    const data = {
+        username: localStorage.getItem('username'),
+        coins: parseInt(localStorage.getItem('coins')),
+        exp: parseInt(localStorage.getItem('exp')),
+        diamonds: parseInt(localStorage.getItem('diamonds')),
+        soulShards: parseInt(localStorage.getItem('soulShards')),
+        lastClaim: parseInt(localStorage.getItem('lastClaim'))
+    };
+
+    fetch(webAppUrl, {
+        method: "POST",
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(response => console.log("Synced to Google Sheets:", response))
+    .catch(error => console.error("Error syncing to Google Sheets:", error));
+}
+
+// ---------- AUTO UPDATE ----------
+setInterval(()=>{ if(localStorage.getItem('username')) updateUI(); },1000);
+
+// ---------- AUTO LOGIN ----------
 window.onload = () => {
     if(localStorage.getItem('username')){
         document.getElementById('login').style.display='none';
